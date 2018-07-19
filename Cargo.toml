@@ -1,0 +1,9 @@
+[package]
+name = "wallball_proxy"
+version = "0.1.0"
+authors = ["Paul Crews <ptcrews@stanford.edu>"]
+
+[dependencies]
+
+[dependencies.pnet]
+version = "0.21.0"
