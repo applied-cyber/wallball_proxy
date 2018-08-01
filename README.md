@@ -67,6 +67,13 @@ Below, the diagram gives an overview of this process:
 ## Remaining Tasks
 TODO
 
+## Installation Instructions 
+* Ensure rust version > 1.2
+```
+1.Clone repo 
+2.Go to root of directory and run `cargo build` 
+```
+
 ## Contributors
 - Paul Crews (ptcrews@cs.stanford.edu)
 - TODO
