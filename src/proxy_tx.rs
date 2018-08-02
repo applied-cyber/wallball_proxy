@@ -6,7 +6,7 @@ use pnet::datalink;
 use pnet::datalink::{NetworkInterface, MacAddr, DataLinkSender, DataLinkReceiver};
 use pnet::datalink::Channel::Ethernet;
 
-use pnet::packet::{Packet, MutablePacket};
+use pnet::packet::{Packet, MutablePacket, PacketSize};
 use pnet::packet::ethernet::{EthernetPacket, MutableEthernetPacket, EtherTypes};
 use pnet::packet::ip::IpNextHeaderProtocols;
 use pnet::packet::ipv4::MutableIpv4Packet;
@@ -67,42 +67,53 @@ impl ProxyTxStruct {
 
     pub fn run(&mut self) {
         loop {
-            match self.in_iface_channel.next() {
+            // Gets next Ethernet packet, or continue next iteration of loop
+            let ethernet_packet = match self.in_iface_channel.next() {
                 Ok(packet) => {
-                    // First verify that it *is* an Ethernet packet, and that
-                    // it contains an IP packet as payload
-                    // TODO: Fix unwrap
-                    let ethernet_packet = EthernetPacket::new(packet).unwrap();
-                    if ethernet_packet.get_ethertype() == EtherTypes::Ipv4 {
-                        self.received_ethernet_packet(ethernet_packet);
+                    // We only care about valid Ethernet packets here;
+                    // likewise, if new fails, we exit
+                    match EthernetPacket::new(packet) {
+                        Some(packet) => packet,
+                        None => continue,
                     }
                 },
                 Err(e) => {
-                    // TODO
+                    // Log and return none
+                    continue;
                 },
+            };
+
+            // ethernet_packet will now be valid and not None here
+
+            // If it is not an Ipv4 packet, continue
+            if ethernet_packet.get_ethertype() != EtherTypes::Ipv4 {
+                continue;
             }
+
+            // Mess with it and send it
+            let mut mut_packet_vec = vec![ethernet_packet.packet_size(); 0];
         }
     }
 
     fn received_ethernet_packet(&mut self, ethernet_packet: EthernetPacket) {
         let offset = EthernetPacket::minimum_packet_size();
-        if ethernet_packet.get_ethertype() == EtherTypes::Ipv4 {
-            self.out_iface_channel.build_and_send(1, ethernet_packet.packet().len(),
-            &mut |mut new_packet| {
-                let mut new_ethernet_packet = MutableEthernetPacket::new(new_packet).unwrap();
-                new_ethernet_packet.clone_from(&ethernet_packet);
-                new_ethernet_packet.set_source(self.out_iface.mac_address());
-                new_ethernet_packet.set_destination(self.next_hop_mac);
-                let mut payload = new_ethernet_packet.payload_mut();
-                let mut new_ip_packet = MutableIpv4Packet::new(payload).unwrap();
-                let destination_ip = new_ip_packet.get_destination();
-                new_ip_packet.set_source(destination_ip);
-                new_ip_packet.set_destination(self.middlebox_ip);
-            });
-        }
+        let new_src_mac = self.out_iface.mac_address();
+        let new_dst_mac = self.next_hop_mac;
+        let new_dst_ip = self.middlebox_ip;
+        self.out_iface_channel.build_and_send(1, ethernet_packet.packet().len(),
+        &mut |mut new_packet| {
+            let mut new_ethernet_packet = MutableEthernetPacket::new(new_packet).unwrap();
+            new_ethernet_packet.clone_from(&ethernet_packet);
+            new_ethernet_packet.set_source(new_src_mac);
+            new_ethernet_packet.set_destination(new_dst_mac);
+            let mut payload = new_ethernet_packet.payload_mut();
+            let mut new_ip_packet = MutableIpv4Packet::new(payload).unwrap();
+            let destination_ip = new_ip_packet.get_destination();
+            new_ip_packet.set_source(destination_ip);
+            new_ip_packet.set_destination(new_dst_ip);
+        });
     }
 }
-
 
 // Utility functions
 fn get_iface_from_name(iface_name: &str) -> NetworkInterface {
