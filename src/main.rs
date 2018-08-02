@@ -34,47 +34,27 @@ const BUF_SIZE: usize = 1500;
 // Primarily interested in ICMP types 3 (unreachable) and 11 (TTL exceeded)
 const ICMP_TYPE: usize = 11;
 
+//const BRIDGED_IFACE_NAME: &'static str = "veth0";
 const BRIDGED_IFACE_NAME: &'static str = "veth0";
-const EXTERNAL_IFACE_NAME: &'static str = "eth0";
-const PROXY_IP_ADDR_STR: &'static str = "192.168.1.1";
+const EXTERNAL_IFACE_NAME: &'static str = "lo";
+const MIDDLEBOX_IP_ADDR_STR: &'static str = "192.168.1.1";
+const DESTINATION_IP_ADDR_STR: &'static str = "192.168.1.2";
 
-fn receive_data(outbound_iface: Box<DataLinkSender>) {
-    /*
-    let protocol = Layer4(Ipv4(IpNextHeaderProtocols::Icmp));
-    let transport_channel = transport_channel(BUF_SIZE, protocol);
 
-    match transport_channel {
-        Ok((tx, mut rx)) => {
-            let mut icmp_iterator = icmp_packet_iter(&mut rx);
-            loop {
-                match icmp_iterator.next() {
-                    Ok((packet, _ip_addr)) => {
-                        println!("Received {:?}", packet.get_icmp_type());
-                        println!("Payload: {:?}", packet.payload());
-                    },
-                    Err(e) => {
-                        panic!("An error occured while reading");
-                    },
-                }
-            }
-        },
-        Err(e) => {
-            panic!("ERROR: Failed to establish transport channel.");
-        },
-    }
-    */
-}
-
-fn transmit_data(mut inbound_iface: Box<DataLinkReceiver>,
-                 mut outbound_iface: Box<DataLinkSender>,
-                 outbound_iface_mac: MacAddr) {
-
-    let proxy_ip_addr = Ipv4Addr::from_str(PROXY_IP_ADDR_STR).unwrap();
-
-    // Listen on bridged interface, then rewrite packet and forward to PROXY_IP
+fn run_tx() {
+    //thread::spawn(|| {
+        let middlebox_ip = Ipv4Addr::from_str(MIDDLEBOX_IP_ADDR_STR).unwrap();
+        let destination_ip = Ipv4Addr::from_str(DESTINATION_IP_ADDR_STR).unwrap();
+        let mut proxy_tx = ProxyTxStruct::new(BRIDGED_IFACE_NAME,
+                                              EXTERNAL_IFACE_NAME,
+                                              middlebox_ip,
+                                              destination_ip);
+        proxy_tx.run();
+    //});
 }
 
 fn main() {
+    run_tx();
 
     /*
     thread::spawn(move || transmit_data(bridged_rx, ext_tx, outbound_iface_mac));
