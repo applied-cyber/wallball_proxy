@@ -66,32 +66,41 @@ impl ProxyTxStruct {
     }
 
     pub fn run(&mut self) {
+        let mut mut_packet_vec: Vec<u8> = (0..512).map(|_| 0x00).collect::<Vec<u8>>();
+        let mut new_ethernet_packet = MutableEthernetPacket::new(&mut mut_packet_vec).unwrap();
         loop {
             // Gets next Ethernet packet, or continue next iteration of loop
-            let ethernet_packet = match self.in_iface_channel.next() {
-                Ok(packet) => {
-                    // We only care about valid Ethernet packets here;
-                    // likewise, if new fails, we exit
-                    match EthernetPacket::new(packet) {
-                        Some(packet) => packet,
-                        None => continue,
-                    }
-                },
-                Err(e) => {
-                    // Log and return none
+            {
+                let ethernet_packet = match self.in_iface_channel.next() {
+                    Ok(packet) => {
+                        print!("Received a valid packet!");
+                        // We only care about valid Ethernet packets here;
+                        // likewise, if new fails, we exit
+                        match EthernetPacket::new(packet) {
+                            Some(packet) => packet,
+                            None => continue,
+                        }
+                    },
+                    Err(e) => {
+                        // Log and return none
+                        continue;
+                    },
+                };
+                print!("Received a valid ethernet packet!");
+
+                // ethernet_packet will now be valid and not None here
+
+                // If it is not an Ipv4 packet, continue
+                if ethernet_packet.get_ethertype() != EtherTypes::Ipv4 {
                     continue;
-                },
-            };
+                }
+                print!("Received a valid ethernet + ipv4 packet!");
 
-            // ethernet_packet will now be valid and not None here
+                // Mess with it and send it
+                new_ethernet_packet.clone_from(&ethernet_packet);
 
-            // If it is not an Ipv4 packet, continue
-            if ethernet_packet.get_ethertype() != EtherTypes::Ipv4 {
-                continue;
             }
-
-            // Mess with it and send it
-            let mut mut_packet_vec = vec![ethernet_packet.packet_size(); 0];
+            self.received_ethernet_packet(new_ethernet_packet.to_immutable());
         }
     }
 

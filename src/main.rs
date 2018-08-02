@@ -34,22 +34,23 @@ const BUF_SIZE: usize = 1500;
 // Primarily interested in ICMP types 3 (unreachable) and 11 (TTL exceeded)
 const ICMP_TYPE: usize = 11;
 
+//const BRIDGED_IFACE_NAME: &'static str = "veth0";
 const BRIDGED_IFACE_NAME: &'static str = "veth0";
-const EXTERNAL_IFACE_NAME: &'static str = "eth0";
+const EXTERNAL_IFACE_NAME: &'static str = "lo";
 const MIDDLEBOX_IP_ADDR_STR: &'static str = "192.168.1.1";
 const DESTINATION_IP_ADDR_STR: &'static str = "192.168.1.2";
 
 
 fn run_tx() {
-    thread::spawn(|| {
+    //thread::spawn(|| {
         let middlebox_ip = Ipv4Addr::from_str(MIDDLEBOX_IP_ADDR_STR).unwrap();
         let destination_ip = Ipv4Addr::from_str(DESTINATION_IP_ADDR_STR).unwrap();
         let mut proxy_tx = ProxyTxStruct::new(BRIDGED_IFACE_NAME,
                                               EXTERNAL_IFACE_NAME,
                                               middlebox_ip,
                                               destination_ip);
-        proxy_tx.run()
-    });
+        proxy_tx.run();
+    //});
 }
 
 fn main() {
